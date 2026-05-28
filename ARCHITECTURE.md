@@ -18,6 +18,7 @@ TerminalNotifier/
 │   │   └── StatusBarController.swift          # 菜单栏彩色像素猫图标 + 下拉菜单
 │   ├── Detection/
 │   │   ├── TerminalContentMonitor.swift       # lsappinfo 轮询 Terminal Dock badge
+│   │   ├── BadgeMonitor.swift                 # [已废弃] 旧版 lsappinfo 实现，保留但未调用
 │   │   └── TerminalScreenLocator.swift        # 定位 Terminal 所在屏幕
 │   ├── Notification/
 │   │   └── NotificationStateMachine.swift     # 通知生命周期状态机
