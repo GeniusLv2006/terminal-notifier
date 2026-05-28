@@ -23,7 +23,6 @@ swiftc \
     -framework AppKit \
     -framework SwiftUI \
     -framework ServiceManagement \
-    -framework ApplicationServices \
     -target arm64-apple-macosx13.0 \
     -O \
     $SOURCES
