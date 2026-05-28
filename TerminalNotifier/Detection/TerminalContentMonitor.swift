@@ -20,27 +20,47 @@ class TerminalContentMonitor {
     private var tickCount = 0
 
     func startMonitoring() {
-        // Setup log file
         try? FileManager.default.removeItem(atPath: "/tmp/terminal-notifier-debug.log")
         FileManager.default.createFile(atPath: "/tmp/terminal-notifier-debug.log", contents: nil)
         dbg("startMonitoring called")
 
-        guard AXIsProcessTrusted() else {
-            dbg("AX not trusted, prompting")
-            let opts = [kAXTrustedCheckOptionPrompt.takeRetainedValue() as String: true] as CFDictionary
-            AXIsProcessTrustedWithOptions(opts)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
-                if AXIsProcessTrusted() {
-                    dbg("AX now trusted, starting polling")
-                    self?.startPolling()
-                } else {
-                    dbg("AX still NOT trusted")
-                }
-            }
+        if AXIsProcessTrusted() {
+            dbg("AX trusted, starting polling")
+            startPolling()
             return
         }
-        dbg("AX trusted, starting polling")
-        startPolling()
+
+        dbg("AX not trusted, prompting")
+        let opts = [kAXTrustedCheckOptionPrompt.takeRetainedValue() as String: true] as CFDictionary
+        AXIsProcessTrustedWithOptions(opts)
+
+        // Keep retrying — user might take time to find and toggle the permission
+        scheduleRetry(attempt: 1)
+    }
+
+    private func scheduleRetry(attempt: Int) {
+        let delay: TimeInterval
+        switch attempt {
+        case 1:  delay = 2
+        case 2:  delay = 3
+        case 3:  delay = 5
+        default: delay = 5  // keep checking every 5s
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self else { return }
+            if AXIsProcessTrusted() {
+                dbg("AX granted after \(attempt) retries, starting")
+                self.startPolling()
+            } else {
+                dbg("AX retry #\(attempt) — still not trusted")
+                // Re-prompt in case the dialog was dismissed
+                if attempt % 3 == 0 {
+                    let opts = [kAXTrustedCheckOptionPrompt.takeRetainedValue() as String: true] as CFDictionary
+                    AXIsProcessTrustedWithOptions(opts)
+                }
+                self.scheduleRetry(attempt: attempt + 1)
+            }
+        }
     }
 
     func stopMonitoring() {
