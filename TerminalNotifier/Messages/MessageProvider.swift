@@ -6,6 +6,8 @@ struct MessageProvider {
         case newNotification = "new_notification"
         case longWait = "long_wait"
         case merged = "merged"
+        case needsConfirm = "needs_confirm"
+        case done = "done"
     }
 
     private let messages: [String: [String: Any]]
@@ -46,6 +48,10 @@ struct MessageProvider {
             return locale == "zh" ? "该看终端了！" : "Check your terminal!"
         case .merged:
             return locale == "zh" ? "有多条通知" : "Multiple notifications"
+        case .needsConfirm:
+            return locale == "zh" ? "Claude 需要你确认！" : "Claude needs your confirmation!"
+        case .done:
+            return locale == "zh" ? "Claude 说完啦！" : "Claude is done!"
         }
     }
 
