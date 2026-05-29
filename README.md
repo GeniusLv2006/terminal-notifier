@@ -38,12 +38,24 @@ open build/TerminalNotifier.app
 ## 功能
 
 - **零权限**：无需辅助功能权限，无需屏幕录制权限
+- **Claude Code 状态检测**（可选）：通过 Claude Code hook 直接区分「需要确认」和「对话完成」，不依赖终端响铃
 - **全屏兼容**：即使你在全屏看视频或写代码，猫也能弹出来
 - **免打扰**：设置时段（如 22:00–08:00），猫会自觉安静
 - **冷却时间**：可调（5–120 秒），防止猫刷屏
 - **通知历史**：查看过往提醒记录
 - **中英文**：根据系统语言自动选择，也可手动设置
 - **像素风**：纯正的像素艺术风格猫咪
+
+## Claude Code 状态检测（可选）
+
+默认的 badge 检测只能知道「终端有动静」。打开设置里的 **检测 Claude Code 状态** 后，App 会通过 Claude Code 官方 hook 直接读对话状态，区分两种事件并弹出对应话语：
+
+- **需要确认**：Claude 等你批准某个操作（`Notification` / `permission_prompt`）
+- **对话完成**：Claude 说完一轮（`Stop`）
+
+开启时 App 会把 hook **安全合并**进 `~/.claude/settings.json`（保留你已有的全部 hook，并在写入前生成 `settings.json.tn-backup-<时间戳>` 备份），关闭即移除。与 badge 一致，**仅 Terminal 在后台时才弹**。
+
+**限制：** 按 Esc「中断」时 Claude Code 不触发任何 hook，因此无法检测中断；本功能不处理输入空闲（idle）。自动合并会规整 settings.json 的格式与键序（已备份）。
 
 ## 设置
 
