@@ -14,6 +14,7 @@ enum NotificationEvent {
     case userDismissed
     case jumpBackCompleted
     case cooldownExpired
+    case longWaitElapsed
 }
 
 protocol NotificationStateMachineDelegate: AnyObject {
@@ -31,6 +32,7 @@ class NotificationStateMachine {
     private var badgeFirstDetectedAt: Date?
     private var isInCooldown: Bool = false
     private var cooldownTimer: Timer?
+    private var longWaitTimer: Timer?
     private let messageProvider = MessageProvider()
     private var locale: String { PreferencesManager.shared.resolvedLocale }
 
@@ -65,7 +67,14 @@ class NotificationStateMachine {
 
         case (.detected, .dropAnimationCompleted):
             currentState = .showing(count: pendingCount)
+            startLongWaitTimer()
             delegate?.stateMachine(self, didTransitionTo: currentState)
+
+        case (.showing, .longWaitElapsed):
+            if case .showing(let count) = currentState {
+                let msg = messageForShowing(count: count, badgeAge: badgeAge)
+                delegate?.stateMachine(self, shouldUpdateMessage: msg)
+            }
 
         case (.showing, .badgeDetected):
             var newCount: Int
@@ -76,6 +85,7 @@ class NotificationStateMachine {
             delegate?.stateMachine(self, shouldUpdateMessage: msg)
 
         case (.showing, .userDismissed):
+            longWaitTimer?.invalidate()
             currentState = .animatingOut
             delegate?.stateMachine(self, didTransitionTo: currentState)
             delegate?.stateMachineShouldDismissOverlay(self)
@@ -117,6 +127,17 @@ class NotificationStateMachine {
         return Date().timeIntervalSince(start)
     }
 
+    private func startLongWaitTimer() {
+        longWaitTimer?.invalidate()
+        let remaining = max(0, Constants.longWaitThreshold - badgeAge)
+        longWaitTimer = Timer.scheduledTimer(
+            withTimeInterval: remaining,
+            repeats: false
+        ) { [weak self] _ in
+            self?.handleEvent(.longWaitElapsed)
+        }
+    }
+
     private func startCooldown() {
         isInCooldown = true
         cooldownTimer?.invalidate()
@@ -133,6 +154,8 @@ class NotificationStateMachine {
     func reset() {
         cooldownTimer?.invalidate()
         cooldownTimer = nil
+        longWaitTimer?.invalidate()
+        longWaitTimer = nil
         isInCooldown = false
         pendingCount = 0
         badgeFirstDetectedAt = nil

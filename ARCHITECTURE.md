@@ -18,7 +18,6 @@ TerminalNotifier/
 │   │   └── StatusBarController.swift          # 菜单栏彩色像素猫图标 + 下拉菜单
 │   ├── Detection/
 │   │   ├── TerminalContentMonitor.swift       # lsappinfo 轮询 Terminal Dock badge
-│   │   ├── BadgeMonitor.swift                 # [已废弃] 旧版 lsappinfo 实现，保留但未调用
 │   │   └── TerminalScreenLocator.swift        # 定位 Terminal 所在屏幕
 │   ├── Notification/
 │   │   └── NotificationStateMachine.swift     # 通知生命周期状态机
@@ -221,6 +220,7 @@ enum NotificationEvent {
     case userDismissed
     case jumpBackCompleted
     case cooldownExpired
+    case longWaitElapsed
 }
 
 class NotificationStateMachine {
@@ -249,7 +249,7 @@ class NotificationStateMachine {
 
 **合并逻辑：** `.showing(count)` 状态下再收到 `badgeDetected` → `count += 1` → 气泡更新为 "你有 {count} 条终端通知"。
 
-**长时间未响应：** `badgeFirstDetectedAt` 记录首次检测时间。badge 持续存在超 2 分钟 → 话语类别切换为 `long_wait`。
+**长时间未响应：** 进入 `.showing` 时启动 `longWaitTimer`，`badgeFirstDetectedAt` 记录首次检测时间。badge 持续存在满 2 分钟仍未被关闭 → 触发 `.longWaitElapsed`，主动将气泡话语类别切换为 `long_wait`（用户点关闭则定时器取消）。
 
 ### 3.6 Overlay / OverlayWindowController
 
