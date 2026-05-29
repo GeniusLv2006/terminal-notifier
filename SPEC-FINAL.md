@@ -25,6 +25,20 @@
 | 前台抑制 | Terminal 在最前面时不触发（用户正在看） |
 | 检测方式 | 1 秒轮询 `lsappinfo info -only StatusLabel com.apple.Terminal` 读取 Dock badge 值 |
 
+> **2026-05-29 新增：Claude Code 状态检测（第二触发源）**
+> badge 只能告诉你「有动静」，区分不了类型，且依赖终端响铃。新增一条独立信号源——
+> 通过 Claude Code 官方 **hooks** 直接读对话状态：
+> - `Notification`（`matcher: permission_prompt`）→ **需要确认**
+> - `Stop` → **对话完成**
+>
+> hook 用 `mktemp` 在 `~/Library/Application Support/TerminalNotifier/claude-events/` 投放标记文件，
+> App 每秒轮询消费。设置里「检测 Claude Code 状态」开关控制（默认关，opt-in）；开启时 App
+> 自动把 hook **安全合并**进 `~/.claude/settings.json`（保留既有 hook + 时间戳备份），关闭即移除。
+>
+> **取舍**：与 badge 一致，**仅 Terminal 后台时才弹**（前台你在看，不打扰）。**不处理 idle**。
+> **中断（Esc）无法检测**——Claude Code 官方在用户中断时不触发任何 hook，`Stop` 仅在 Claude
+> 自己说完时触发，无中断专用 hook。
+
 ### 2.2 菜单栏宠物
 
 | 项目 | 决策 |

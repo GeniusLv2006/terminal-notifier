@@ -18,7 +18,10 @@ TerminalNotifier/
 │   │   └── StatusBarController.swift          # 菜单栏彩色像素猫图标 + 下拉菜单
 │   ├── Detection/
 │   │   ├── TerminalContentMonitor.swift       # lsappinfo 轮询 Terminal Dock badge
+│   │   ├── ClaudeCodeMonitor.swift            # 轮询 Claude Code hook 投放的事件标记文件
 │   │   └── TerminalScreenLocator.swift        # 定位 Terminal 所在屏幕
+│   ├── Integration/
+│   │   └── ClaudeHookManager.swift            # 安全合并/移除 ~/.claude/settings.json 的 hook
 │   ├── Notification/
 │   │   └── NotificationStateMachine.swift     # 通知生命周期状态机
 │   ├── Overlay/
@@ -84,6 +87,17 @@ TerminalNotifier/
 - **无特殊权限需求**。Badge 检测通过 `lsappinfo` 命令读取，无需辅助功能权限或屏幕录制权限
 - **App Sandbox**：关闭。`Process` 执行 CLI 命令 + `CGWindowListCopyWindowInfo` 需要非沙盒环境
 - **代码签名**：自签证书 `TerminalNotifierDev`（`codesign --sign "TerminalNotifierDev"`），保持 TCC 权限跨重编译稳定（如未来需要其他权限）
+
+### 2.5 Claude Code 集成（第二触发源）
+
+独立于 badge 的语义化信号源：
+
+- **hook → App 通道**：`ClaudeHookManager` 在 `~/.claude/settings.json` 注册两条 command hook——`Notification`（`matcher: permission_prompt`）和 `Stop`。hook 经 `/bin/sh` 用 `mktemp` 在 `~/Library/Application Support/TerminalNotifier/claude-events/` 投放标记文件（`<type>.XXXXXX`；macOS BSD `date` 无 `%N`，故用 mktemp 保唯一）。
+- **消费**：`ClaudeCodeMonitor` 每秒轮询该目录，解析类型→`MessageProvider.Category`→删文件→Terminal 非前台则回调 delegate。
+- **安全合并**：`install()/uninstall()` 用 `JSONSerialization` 只增删带 `# terminal-notifier-hook` 标记的 entry，幂等，写前时间戳备份。**权衡**：重写会规整文件格式/键序。
+- **状态机**：新增 `.claudeTrigger(category)`，复用现有掉落/气泡/跳回/冷却；Claude 提醒不参与「N 条」合并，也不做 2 分钟 longWait 升级。
+- **开关**：`PreferencesManager.claudeCodeEnabled`（默认关）；`AppDelegate` 观察其变化触发 install/uninstall + 启停监控，启动时若开启则幂等自愈。
+- **限制**：Esc 中断无对应 hook 不可检测；不处理 idle；前台门控仅识别 Terminal.app。
 
 ---
 

@@ -15,6 +15,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var statusBarController: StatusBarController!
     private var contentMonitor: TerminalContentMonitor!
+    private var claudeMonitor: ClaudeCodeMonitor!
     private var overlayController: OverlayWindowController!
     private var stateMachine: NotificationStateMachine!
     private var settingsController: SettingsWindowController!
@@ -22,15 +23,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var soundManager = SoundManager()
     private let preferences = PreferencesManager.shared
     private var lastLaunchAtLoginValue: Bool = false
+    private var lastClaudeCodeEnabledValue: Bool = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         overlayController = OverlayWindowController()
         statusBarController = StatusBarController()
         contentMonitor = TerminalContentMonitor()
+        claudeMonitor = ClaudeCodeMonitor()
         settingsController = SettingsWindowController()
         stateMachine = NotificationStateMachine()
 
         contentMonitor.delegate = self
+        claudeMonitor.delegate = self
         stateMachine.delegate = self
 
         overlayController.onDismissRequested = { [weak self] in
@@ -48,8 +52,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self.settingsController.showSettings(preferences: self.preferences)
         }
         statusBarController.onPauseToggled = { [weak self] paused in
-            if paused { self?.contentMonitor.stopMonitoring() }
-            else { self?.contentMonitor.startMonitoring() }
+            if paused {
+                self?.contentMonitor.stopMonitoring()
+                self?.claudeMonitor.stopMonitoring()
+            } else {
+                self?.contentMonitor.startMonitoring()
+                if self?.preferences.claudeCodeEnabled == true { self?.claudeMonitor.startMonitoring() }
+            }
         }
         statusBarController.onHistoryClicked = { [weak self] in self?.showHistory() }
         statusBarController.onQuitClicked = { NSApplication.shared.terminate(nil) }
@@ -63,15 +72,38 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self.lastLaunchAtLoginValue = current
                 self.setLaunchAtLogin(current)
             }
+            let claudeCurrent = self.preferences.claudeCodeEnabled
+            if claudeCurrent != self.lastClaudeCodeEnabledValue {
+                self.lastClaudeCodeEnabledValue = claudeCurrent
+                self.setClaudeCodeEnabled(claudeCurrent)
+            }
         }
         lastLaunchAtLoginValue = preferences.launchAtLogin
+        lastClaudeCodeEnabledValue = preferences.claudeCodeEnabled
 
         contentMonitor.startMonitoring()
+        // 持久化开启时，自愈式确保 hook 已安装并启动监控。
+        if preferences.claudeCodeEnabled {
+            ClaudeHookManager.install()
+            claudeMonitor.startMonitoring()
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         contentMonitor.stopMonitoring()
+        claudeMonitor.stopMonitoring()
         overlayController.close()
+    }
+
+    /// 切换 Claude Code 状态检测：安装/卸载 hook + 启停监控。
+    private func setClaudeCodeEnabled(_ enabled: Bool) {
+        if enabled {
+            ClaudeHookManager.install()
+            claudeMonitor.startMonitoring()
+        } else {
+            ClaudeHookManager.uninstall()
+            claudeMonitor.stopMonitoring()
+        }
     }
 
     private func showOverlay(message: String) {
@@ -119,6 +151,17 @@ extension AppDelegate: TerminalContentMonitorDelegate {
             return
         }
         stateMachine.handleEvent(.badgeDetected)
+    }
+}
+
+extension AppDelegate: ClaudeCodeMonitorDelegate {
+    func claudeCodeMonitor(_ monitor: ClaudeCodeMonitor, didEmit category: MessageProvider.Category) {
+        tnLog("claudeCodeMonitor didEmit \(category.rawValue)")
+        guard preferences.enabled, !preferences.isInDNDPeriod else {
+            tnLog("claudeCodeMonitor BLOCKED by prefs")
+            return
+        }
+        stateMachine.handleEvent(.claudeTrigger(category))
     }
 }
 

@@ -13,5 +13,19 @@
     "It's been a while... terminal is still waiting...",
     "If you don't go check, terminal's gonna be mad! Meow!"
   ],
+  "needs_confirm": [
+    "Meow! Claude needs your call — go confirm it~",
+    "An action is waiting for your OK, take a look!",
+    "Claude is stuck waiting for you to confirm, meow~",
+    "Needs your approval — the terminal's waiting!",
+    "Meow~ something needs your go-ahead to continue"
+  ],
+  "done": [
+    "Meow~ Claude's done! Go see the result!",
+    "This turn is finished, come back and check!",
+    "Task complete, the terminal's waiting for you~",
+    "Claude wrapped up — go take a look!",
+    "All done, meow! The results are in!"
+  ],
   "merged": "You have {count} terminal notifications"
 }

@@ -18,6 +18,14 @@
 - 终端需要你输入密码（sudo）
 - 任何会在 Terminal.app Dock 图标上产生 badge 的操作
 
+> **进阶（可选）：Claude Code 状态检测**
+> 在 设置 → 通用 里打开「检测 Claude Code 状态」，App 会通过 Claude Code 官方 hook 直接区分：
+> - **需要确认**（Claude 等你批准操作）
+> - **对话完成**（Claude 说完一轮）
+>
+> 开启时 App 自动把 hook 写入 `~/.claude/settings.json`（保留你已有 hook + 自动备份为 `settings.json.tn-backup-<时间戳>`），关闭即移除。与默认提醒一致，仅 Terminal 在后台时才弹。
+> **注意**：按 Esc「中断」无法被检测（Claude Code 不为中断触发 hook）；不处理输入空闲。
+
 ### 3. 关闭提醒
 
 三种方式：

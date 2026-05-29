@@ -33,6 +33,15 @@ struct GeneralSettingsTab: View {
                 Text(settingsLang("Launch at Login", zh: "开机自启动"))
             }
 
+            Toggle(isOn: $preferences.claudeCodeEnabled) {
+                Text(settingsLang("Detect Claude Code state", zh: "检测 Claude Code 状态"))
+            }
+            Text(settingsLang(
+                "Pops on \"needs confirmation\" / \"done\". Writes a hook into ~/.claude/settings.json (backed up; turn off to remove).",
+                zh: "在「需要确认 / 对话完成」时弹出。会在 ~/.claude/settings.json 写入 hook（已备份；关闭即移除）。"))
+                .font(.caption)
+                .foregroundColor(.secondary)
+
             Picker(selection: $preferences.language) {
                 Text(settingsLang("System Default", zh: "跟随系统")).tag("system")
                 Text("中文").tag("zh")
