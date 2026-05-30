@@ -74,11 +74,11 @@ class StatusBarController {
             guard let button = self.statusItem.button else { return }
             switch state {
             case .normal:
-                button.image = Self.createColoredCatIcon(size: 22)
+                button.image = Self.createColoredCatIcon(size: Constants.menuBarIconSize)
             case .notifying:
-                button.image = Self.createAlertCatIcon(size: 22)
+                button.image = Self.createAlertCatIcon(size: Constants.menuBarIconSize)
             case .paused:
-                button.image = Self.createPausedIcon(size: 22)
+                button.image = Self.createPausedIcon(size: Constants.menuBarIconSize)
             }
         }
     }
@@ -118,6 +118,7 @@ class StatusBarController {
         let image = NSImage(size: NSSize(width: size, height: size))
 
         image.lockFocus()
+        NSGraphicsContext.current?.cgContext.setShouldAntialias(false)
 
         let pixel = size / 11.0
         let bodyColor: NSColor
