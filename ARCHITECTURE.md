@@ -15,7 +15,7 @@ TerminalNotifier/
 │   │   ├── AppDelegate.swift                  # 组装所有模块
 │   │   └── Constants.swift                    # 全局常量
 │   ├── MenuBar/
-│   │   └── StatusBarController.swift          # 菜单栏猫图标（加载 MenuBarCat.png，三态染色）+ 下拉菜单
+│   │   └── StatusBarController.swift          # 菜单栏猫图标（normal/notifying/paused 三态各一张 PNG）+ 下拉菜单
 │   ├── Detection/
 │   │   ├── TerminalContentMonitor.swift       # lsappinfo 轮询 Terminal Dock badge
 │   │   ├── ClaudeCodeMonitor.swift            # 轮询 Claude Code hook 投放的事件标记文件
@@ -47,7 +47,9 @@ TerminalNotifier/
 │   │   └── SoundManager.swift                 # 音效播放
 │   └── Resources/
 │       ├── PetCat.png                         # 悬浮窗大猫素材（16×16 像素图，@2x）
-│       └── MenuBarCat.png                     # 菜单栏小猫素材（11×11 像素图，@2x）
+│       ├── MenuBarCat.png                     # 菜单栏小猫·normal（11×11，@2x）
+│       ├── MenuBarCatNotifying.png            # 菜单栏小猫·notifying（红）
+│       └── MenuBarCatPaused.png               # 菜单栏小猫·paused（灰）
 ├── build.sh                                   # 编译 + TerminalNotifierDev 证书签名 + 安装到 /Applications
 └── README.md
 ```

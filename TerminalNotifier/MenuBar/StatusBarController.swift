@@ -103,26 +103,28 @@ class StatusBarController {
     // MARK: - Colored Cat Icon (visible on any menu bar)
 
     static func createColoredCatIcon(size: CGFloat) -> NSImage {
-        return menuBarCatImage(size: size, tint: nil)
+        return menuBarCatImage(size: size, source: normalImage)
     }
 
     static func createAlertCatIcon(size: CGFloat) -> NSImage {
-        // notifying:整体染红
-        return menuBarCatImage(size: size, tint: NSColor.systemRed.withAlphaComponent(0.6))
+        return menuBarCatImage(size: size, source: notifyingImage)
     }
 
     static func createPausedIcon(size: CGFloat) -> NSImage {
-        // paused:整体置灰
-        return menuBarCatImage(size: size, tint: NSColor.gray.withAlphaComponent(0.8))
+        return menuBarCatImage(size: size, source: pausedImage)
     }
 
-    // 菜单栏猫素材(11×11 设计,@2x PNG)。加载一次复用。
-    private static let catImage: NSImage? = {
-        guard let url = Bundle.main.url(forResource: "MenuBarCat", withExtension: "png") else { return nil }
-        return NSImage(contentsOf: url)
-    }()
+    // 菜单栏猫素材(11×11 设计,@2x PNG),三态各一张。加载一次复用。
+    private static let normalImage = loadCat("MenuBarCat")
+    private static let notifyingImage = loadCat("MenuBarCatNotifying")
+    private static let pausedImage = loadCat("MenuBarCatPaused")
 
-    private static func menuBarCatImage(size: CGFloat, tint: NSColor?) -> NSImage {
+    private static func loadCat(_ name: String) -> NSImage? {
+        guard let url = Bundle.main.url(forResource: name, withExtension: "png") else { return nil }
+        return NSImage(contentsOf: url)
+    }
+
+    private static func menuBarCatImage(size: CGFloat, source: NSImage?) -> NSImage {
         let image = NSImage(size: NSSize(width: size, height: size))
 
         image.lockFocus()
@@ -130,16 +132,7 @@ class StatusBarController {
             ctx.imageInterpolation = .none
             ctx.cgContext.setShouldAntialias(false)
         }
-
-        let rect = NSRect(x: 0, y: 0, width: size, height: size)
-        catImage?.draw(in: rect)
-
-        // 仅给不透明像素叠色,保留猫形与透明背景
-        if let tint = tint {
-            tint.set()
-            rect.fill(using: .sourceAtop)
-        }
-
+        source?.draw(in: NSRect(x: 0, y: 0, width: size, height: size))
         image.unlockFocus()
         return image
     }
