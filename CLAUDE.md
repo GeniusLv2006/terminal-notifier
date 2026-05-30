@@ -112,3 +112,15 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 | 构建/分发流程变更 | ARCHITECTURE §6、build.sh、README 安装说明 |
 | API 接口签名变更 | ARCHITECTURE §3 对应模块的 Swift 签名 |
 | 设置项变更 | SPEC-FINAL §2.5、ARCHITECTURE §3.13、README 设置表 |
+
+## 7. 发版流程
+
+**每次发布 release，版本号三处必须对齐，缺一不可：**
+
+1. `TerminalNotifier/Info.plist` — `CFBundleShortVersionString`（用户可见版本，如 `1.2.0`）；`CFBundleVersion`（构建号）每次发版 +1。
+2. `README.md` 更新日志加新版本条目。
+3. `git tag` + `gh release create v<x.y.z>`（打 tag、上传 `.zip`、写 release notes）。
+
+**版本号规则（语义化 主.次.补丁）：** 加功能 → 次版本 +1；只修 bug → 补丁 +1；破坏性改动 → 主版本 +1。
+
+> ⚠️ **最容易漏的就是 Info.plist 的版本号**——它是 app 内部的「身份证」，漏改会导致 release tag 与 app 实际显示版本对不上。发版前第一件事就是改它。
