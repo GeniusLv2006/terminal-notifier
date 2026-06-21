@@ -31,6 +31,7 @@ echo "Copying Info.plist..."
 cp "$PROJECT_DIR/TerminalNotifier/Info.plist" "$CONTENTS/Info.plist"
 cp "$PROJECT_DIR/TerminalNotifier/Messages/"*.json "$RESOURCES_DIR/"
 cp "$PROJECT_DIR/TerminalNotifier/Resources/"*.png "$RESOURCES_DIR/"
+cp "$PROJECT_DIR/TerminalNotifier/Resources/"*.icns "$RESOURCES_DIR/"
 
 echo "Signing with TerminalNotifierDev certificate..."
 codesign --force --deep --sign "TerminalNotifierDev" "$APP_BUNDLE"
