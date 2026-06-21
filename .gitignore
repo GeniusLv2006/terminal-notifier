@@ -11,10 +11,18 @@ build/
 *.xcodeproj
 *.xcworkspace
 
-# Claude Code
+# Local AI / agent workspace files
+CLAUDE.md
 .claude/
+.codex/
+.agents/
 
-# CLAUDE.md is a project file, should be tracked
+# Local planning / scratch docs
+*-CONFIRM.md
+SPEC-*.md
+*.local.md
+notes/
+scratch/
 
 # 源 PNG 不直接入库;Resources 下的猫素材例外(打包进 bundle 需入库)
 *.png

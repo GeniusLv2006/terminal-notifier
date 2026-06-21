@@ -93,6 +93,11 @@ open build/TerminalNotifier.app
 
 Swift + AppKit（主应用）+ SwiftUI（设置窗口），不依赖任何第三方框架。
 
+## 文档
+
+- [使用说明](docs/USER-GUIDE.md)
+- [架构说明](docs/ARCHITECTURE.md)
+
 ## 许可
 
 MIT License

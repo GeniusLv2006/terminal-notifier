@@ -1,6 +1,6 @@
 # Terminal Notifier — 技术架构设计
 
-> 基于 SPEC-FINAL.md 设计，2026-05-28
+> 本文档记录 Terminal Notifier 的当前技术架构与关键实现取舍。
 
 ---
 
