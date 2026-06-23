@@ -8,6 +8,8 @@ struct MessageProvider {
         case merged = "merged"
         case needsConfirm = "needs_confirm"
         case done = "done"
+        case codexNeedsConfirm = "codex_needs_confirm"
+        case codexDone = "codex_done"
     }
 
     private let messages: [String: [String: Any]]
@@ -52,6 +54,10 @@ struct MessageProvider {
             return locale == "zh" ? "Claude 需要你确认！" : "Claude needs your confirmation!"
         case .done:
             return locale == "zh" ? "Claude 说完啦！" : "Claude is done!"
+        case .codexNeedsConfirm:
+            return locale == "zh" ? "Codex 需要你确认！" : "Codex needs your confirmation!"
+        case .codexDone:
+            return locale == "zh" ? "Codex 这一轮完成啦！" : "Codex is done!"
         }
     }
 

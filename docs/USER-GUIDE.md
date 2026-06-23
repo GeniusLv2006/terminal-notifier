@@ -26,6 +26,16 @@
 > 开启时 App 自动把 hook 写入 `~/.claude/settings.json`（保留你已有 hook + 自动备份为 `settings.json.tn-backup-<时间戳>`），关闭即移除。与默认提醒一致，仅 Terminal 在后台时才弹。
 > **注意**：按 Esc「中断」无法被检测（Claude Code 不为中断触发 hook）；不处理输入空闲。
 
+> **进阶（可选）：Codex 状态检测**
+> 在 设置 → 通用 里打开「检测 Codex 状态」，App 会通过 Codex lifecycle hooks 区分：
+> - **需要确认**（Codex 等你批准操作）
+> - **对话完成**（Codex 完成一轮）
+>
+> 开启时 App 自动把 hooks 写入 `~/.codex/hooks.json`（保留你已有 hooks + 自动备份为 `hooks.json.tn-backup-<时间戳>`），关闭即移除。仅 Codex 不在前台时才弹。
+> **必须信任 hooks**：开启后请重启或重新打开 Codex，然后进入 Codex 设置 → 钩子，审核并信任 `PermissionRequest` 和 `Stop` 两项。未信任前 Codex 会跳过这些 hooks，Terminal Notifier 不会收到提醒。
+> **已知问题**：Codex 的 `auto-review` 流程仍可能发出 `PermissionRequest` hook，因此即使 Codex 自动完成审核，也可能出现「需要确认」提醒。
+> **注意**：Codex hooks 是用户级配置，可能同时被本机 Codex App / CLI / IDE Extension 采用；当前不区分具体 Codex 入口。若需要排查 hook 是否执行，可查看 `~/Library/Application Support/TerminalNotifier/codex-hook.log`。
+
 ### 3. 关闭提醒
 
 三种方式：
@@ -64,6 +74,8 @@
 |--------|------|
 | **启用提醒** | 总开关。关闭后检测仍然运行，但不会弹出提醒。 |
 | **开机自启动** | 打开后，每次登录 Mac 自动启动 Terminal Notifier。 |
+| **检测 Claude Code 状态** | 写入 `~/.claude/settings.json`，捕捉 Claude 需要确认和完成一轮。 |
+| **检测 Codex 状态** | 写入 `~/.codex/hooks.json`，捕捉 Codex 需要确认和完成一轮。 |
 | **语言** | 中文 / 英文 / 跟随系统。控制气泡提示文字的语言。 |
 | **宠物** | 目前只有"像素猫"，更多宠物后续更新。 |
 
@@ -74,7 +86,7 @@
 | **播放声音** | 提醒时播放系统提示音。如果觉得烦可以关掉。 |
 | **冷却时间** | 两次提醒之间的最短间隔（5–120 秒）。默认 10 秒，防止猫频繁弹窗。 |
 | **免打扰时段** | 开启后在指定时间段内不弹出提醒。例如设为 22:00–08:00，猫晚上就安静了。 |
-| **关闭提醒后跳转终端** | 关闭提醒时自动把 Terminal.app 切到最前。方便直接查看。 |
+| **关闭提醒后跳转来源应用** | 关闭提醒时自动把 Terminal.app 或 Codex.app 切到最前。方便直接查看。 |
 
 ---
 
@@ -99,7 +111,7 @@
 
 ### Q: 会收集我的数据吗？
 
-不会。Terminal Notifier 完全离线运行。它只做一件事：检查 Terminal.app 的 Dock badge 值。所有设置和历史记录都存储在本地。
+不会。Terminal Notifier 完全离线运行。它会检查 Terminal.app 的 Dock badge 值，并在你开启进阶检测时写入本地 Claude / Codex hooks，让对应工具投放本地 marker 文件。所有设置和历史记录都存储在本地。
 
 ### Q: 支持 iTerm2 吗？
 

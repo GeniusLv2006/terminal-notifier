@@ -31,8 +31,7 @@ class OverlayWindowController {
         if window != nil { forceClose() }
         isDismissing = false
 
-        // Use visibleFrame to avoid covering the menu bar
-        let windowRect = screen.visibleFrame
+        let windowRect = screen.frame
         let menuBarY = screen.frame.maxY
 
         let window = OverlayWindow(
@@ -62,31 +61,48 @@ class OverlayWindowController {
         }
 
         window.contentView = contentView
-        window.makeKeyAndOrderFront(nil)
-        window.alphaValue = 1.0
 
         self.window = window
         self.contentView = contentView
 
-        animateDrop(menuBarY: menuBarY, windowRect: windowRect)
+        prepareDrop(menuBarY: menuBarY, windowRect: windowRect)
+        window.makeKeyAndOrderFront(nil)
+        window.alphaValue = 1.0
+
+        DispatchQueue.main.async { [weak self] in
+            self?.animateDrop(menuBarY: menuBarY, windowRect: windowRect)
+        }
+    }
+
+    private func prepareDrop(menuBarY: CGFloat, windowRect: NSRect) {
+        guard let petView = contentView?.petView else { return }
+        petView.wantsLayer = true
+        contentView?.layoutSubtreeIfNeeded()
+
+        let finalCenter = OverlayContentView.petCenter(
+            in: windowRect.size,
+            petSize: Constants.defaultPetSize
+        )
+
+        // Start above the window (at menu bar Y, converted to window-local coords)
+        let startY = windowRect.height + (menuBarY - windowRect.maxY)
+
+        dropAnimator.prepareInitialState(layer: petView.layer!, from: startY, to: finalCenter.y)
     }
 
     private func animateDrop(menuBarY: CGFloat, windowRect: NSRect) {
         guard let petView = contentView?.petView else { return }
         petView.wantsLayer = true
-
-        let finalCenterX = windowRect.midX
-        let finalPetY = windowRect.height * 0.35 + Constants.defaultPetSize / 2
-
-        // Start above the window (at menu bar Y, converted to window-local coords)
+        let finalCenter = OverlayContentView.petCenter(
+            in: windowRect.size,
+            petSize: Constants.defaultPetSize
+        )
         let startY = windowRect.height + (menuBarY - windowRect.maxY)
-
-        petView.layer?.position = CGPoint(x: finalCenterX, y: startY)
 
         dropAnimator.animate(
             layer: petView.layer!,
             from: startY,
-            to: finalPetY,
+            to: finalCenter.y,
             completion: { [weak self] in
                 self?.onDropAnimationComplete?()
             }
@@ -107,19 +123,21 @@ class OverlayWindowController {
         isDismissing = true
 
         let menuBarY = screen.frame.maxY
-        let windowRect = screen.visibleFrame
-        let targetY = windowRect.height + (menuBarY - windowRect.maxY)
-
-        let currentPos = contentView?.petView.layer?.position
-            ?? CGPoint(x: windowRect.midX, y: windowRect.height * 0.35)
+        let windowRect = screen.frame
+        let targetY = windowRect.height
+            + (menuBarY - windowRect.maxY)
+            + Constants.defaultPetSize / 2
+            + 32
 
         if let petView = contentView?.petView {
             petView.wantsLayer = true
+            let currentPos = currentVisualPosition(for: petView.layer)
+                ?? OverlayContentView.petCenter(in: windowRect.size, petSize: Constants.defaultPetSize)
 
             jumpBackAnimator.animate(
                 layer: petView.layer!,
                 from: currentPos,
-                to: CGPoint(x: windowRect.midX, y: targetY),
+                to: CGPoint(x: currentPos.x, y: targetY),
                 completion: { [weak self] in
                     self?.onJumpBackComplete?()
                 }
@@ -143,5 +161,16 @@ class OverlayWindowController {
 
     func close() {
         forceClose()
+    }
+
+    private func currentVisualPosition(for layer: CALayer?) -> CGPoint? {
+        guard let layer else { return nil }
+        let presentation = layer.presentation()
+        let basePosition = presentation?.position ?? layer.position
+        let transform = presentation?.transform ?? layer.transform
+        return CGPoint(
+            x: basePosition.x + transform.m41,
+            y: basePosition.y + transform.m42
+        )
     }
 }

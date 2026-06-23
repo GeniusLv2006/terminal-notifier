@@ -27,5 +27,19 @@
     "Claude wrapped up — go take a look!",
     "All done, meow! The results are in!"
   ],
+  "codex_needs_confirm": [
+    "Meow! Codex needs your confirmation~",
+    "Codex has an action waiting for approval.",
+    "Codex paused for your call, take a look!",
+    "Codex needs your go-ahead to continue.",
+    "Meow~ Codex is waiting for you."
+  ],
+  "codex_done": [
+    "Meow~ Codex finished this turn!",
+    "Codex wrapped up — go check the result.",
+    "This Codex turn is done, take a look!",
+    "All done, meow! Codex is ready for review.",
+    "Codex is finished and waiting for you."
+  ],
   "merged": "You have {count} terminal notifications"
 }

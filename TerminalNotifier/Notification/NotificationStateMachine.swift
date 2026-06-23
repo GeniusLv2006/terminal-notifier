@@ -10,7 +10,7 @@ enum NotificationState: Equatable {
 enum NotificationEvent {
     case badgeDetected
     case badgeCleared
-    case claudeTrigger(MessageProvider.Category)
+    case agentTrigger(MessageProvider.Category, NotificationSource)
     case dropAnimationCompleted
     case userDismissed
     case jumpBackCompleted
@@ -20,8 +20,16 @@ enum NotificationEvent {
 
 protocol NotificationStateMachineDelegate: AnyObject {
     func stateMachine(_ sm: NotificationStateMachine, didTransitionTo state: NotificationState)
-    func stateMachine(_ sm: NotificationStateMachine, shouldShowOverlayWithMessage message: String)
-    func stateMachine(_ sm: NotificationStateMachine, shouldUpdateMessage message: String)
+    func stateMachine(
+        _ sm: NotificationStateMachine,
+        shouldShowOverlayWithMessage message: String,
+        category: MessageProvider.Category,
+        source: NotificationSource)
+    func stateMachine(
+        _ sm: NotificationStateMachine,
+        shouldUpdateMessage message: String,
+        category: MessageProvider.Category,
+        source: NotificationSource)
     func stateMachineShouldDismissOverlay(_ sm: NotificationStateMachine)
 }
 
@@ -34,10 +42,11 @@ class NotificationStateMachine {
     private var isInCooldown: Bool = false
     private var cooldownTimer: Timer?
     private var longWaitTimer: Timer?
-    /// 非 nil 表示当前提醒来自 Claude Code（携带具体分类）；nil 表示 badge 默认行为。
+    /// 非 nil 表示当前提醒来自语义化 hook（携带具体分类）；nil 表示 badge 默认行为。
     private var activeCategory: MessageProvider.Category?
-    /// 冷却期间到达的 Claude 事件，冷却结束后补弹。
-    private var pendingClaude: MessageProvider.Category?
+    private var activeSource: NotificationSource = .terminal
+    /// 冷却期间到达的 hook 事件，冷却结束后补弹。
+    private var pendingAgent: (category: MessageProvider.Category, source: NotificationSource)?
     private let messageProvider = MessageProvider()
     private var locale: String { PreferencesManager.shared.resolvedLocale }
 
@@ -50,50 +59,71 @@ class NotificationStateMachine {
                 return
             }
             activeCategory = nil
+            activeSource = .terminal
             pendingCount = 1
             let msg = messageProvider.randomMessage(category: .newNotification, locale: locale)
             currentState = .detected(count: 1)
             badgeFirstDetectedAt = Date()
             delegate?.stateMachine(self, didTransitionTo: currentState)
-            delegate?.stateMachine(self, shouldShowOverlayWithMessage: msg)
+            delegate?.stateMachine(
+                self,
+                shouldShowOverlayWithMessage: msg,
+                category: .newNotification,
+                source: .terminal)
 
-        case (.idle, .claudeTrigger(let cat)):
+        case (.idle, .agentTrigger(let cat, let source)):
             guard !isInCooldown else {
-                pendingClaude = cat
+                pendingAgent = (cat, source)
                 return
             }
             activeCategory = cat
+            activeSource = source
             pendingCount = 1
             let msg = messageProvider.randomMessage(category: cat, locale: locale)
             currentState = .detected(count: 1)
             badgeFirstDetectedAt = Date()
             delegate?.stateMachine(self, didTransitionTo: currentState)
-            delegate?.stateMachine(self, shouldShowOverlayWithMessage: msg)
+            delegate?.stateMachine(
+                self,
+                shouldShowOverlayWithMessage: msg,
+                category: cat,
+                source: source)
 
-        case (.showing, .claudeTrigger(let cat)):
+        case (.showing, .agentTrigger(let cat, let source)):
             activeCategory = cat
+            activeSource = source
             let msg = messageProvider.randomMessage(category: cat, locale: locale)
-            delegate?.stateMachine(self, shouldUpdateMessage: msg)
+            delegate?.stateMachine(self, shouldUpdateMessage: msg, category: cat, source: source)
 
         case (.idle, .cooldownExpired):
-            if let cat = pendingClaude {
-                pendingClaude = nil
-                activeCategory = cat
+            if let pending = pendingAgent {
+                pendingAgent = nil
+                activeCategory = pending.category
+                activeSource = pending.source
                 pendingCount = 1
-                let msg = messageProvider.randomMessage(category: cat, locale: locale)
+                let msg = messageProvider.randomMessage(category: pending.category, locale: locale)
                 currentState = .detected(count: 1)
                 badgeFirstDetectedAt = Date()
                 delegate?.stateMachine(self, didTransitionTo: currentState)
-                delegate?.stateMachine(self, shouldShowOverlayWithMessage: msg)
+                delegate?.stateMachine(
+                    self,
+                    shouldShowOverlayWithMessage: msg,
+                    category: pending.category,
+                    source: pending.source)
             } else if pendingCount > 0 {
                 let count = pendingCount
                 pendingCount = 0
                 activeCategory = nil
-                let msg = messageForShowing(count: count, badgeAge: 0)
+                activeSource = .terminal
+                let message = messageForShowing(count: count, badgeAge: 0)
                 currentState = .detected(count: count)
                 badgeFirstDetectedAt = Date()
                 delegate?.stateMachine(self, didTransitionTo: currentState)
-                delegate?.stateMachine(self, shouldShowOverlayWithMessage: msg)
+                delegate?.stateMachine(
+                    self,
+                    shouldShowOverlayWithMessage: message.text,
+                    category: message.category,
+                    source: .terminal)
             }
 
         case (.detected, .badgeDetected):
@@ -101,23 +131,33 @@ class NotificationStateMachine {
 
         case (.detected, .dropAnimationCompleted):
             currentState = .showing(count: pendingCount)
-            // Claude 提醒话语已具体（需确认/完成），不做 2 分钟「长时间未响应」升级覆盖。
+            // Hook 提醒话语已具体（需确认/完成），不做 2 分钟「长时间未响应」升级覆盖。
             if activeCategory == nil { startLongWaitTimer() }
             delegate?.stateMachine(self, didTransitionTo: currentState)
 
         case (.showing, .longWaitElapsed):
             if case .showing(let count) = currentState {
-                let msg = messageForShowing(count: count, badgeAge: badgeAge)
-                delegate?.stateMachine(self, shouldUpdateMessage: msg)
+                let message = messageForShowing(count: count, badgeAge: badgeAge)
+                delegate?.stateMachine(
+                    self,
+                    shouldUpdateMessage: message.text,
+                    category: message.category,
+                    source: activeSource)
             }
 
         case (.showing, .badgeDetected):
             var newCount: Int
             if case .showing(let count) = currentState { newCount = count + 1 }
             else { newCount = 1 }
+            activeCategory = nil
+            activeSource = .terminal
             currentState = .showing(count: newCount)
-            let msg = messageForShowing(count: newCount, badgeAge: badgeAge)
-            delegate?.stateMachine(self, shouldUpdateMessage: msg)
+            let message = messageForShowing(count: newCount, badgeAge: badgeAge)
+            delegate?.stateMachine(
+                self,
+                shouldUpdateMessage: message.text,
+                category: message.category,
+                source: .terminal)
 
         case (.showing, .userDismissed):
             longWaitTimer?.invalidate()
@@ -130,6 +170,7 @@ class NotificationStateMachine {
             pendingCount = 0
             badgeFirstDetectedAt = nil
             activeCategory = nil
+            activeSource = .terminal
             startCooldown()
             delegate?.stateMachine(self, didTransitionTo: currentState)
 
@@ -149,13 +190,14 @@ class NotificationStateMachine {
 #endif
     }
 
-    private func messageForShowing(count: Int, badgeAge: TimeInterval) -> String {
+    private func messageForShowing(count: Int, badgeAge: TimeInterval)
+        -> (text: String, category: MessageProvider.Category) {
         if count > 1 {
-            return messageProvider.mergedMessage(count: count, locale: locale)
+            return (messageProvider.mergedMessage(count: count, locale: locale), .merged)
         }
         let category: MessageProvider.Category = badgeAge >= Constants.longWaitThreshold
             ? .longWait : .newNotification
-        return messageProvider.randomMessage(category: category, locale: locale)
+        return (messageProvider.randomMessage(category: category, locale: locale), category)
     }
 
     private var badgeAge: TimeInterval {
@@ -196,7 +238,8 @@ class NotificationStateMachine {
         pendingCount = 0
         badgeFirstDetectedAt = nil
         activeCategory = nil
-        pendingClaude = nil
+        activeSource = .terminal
+        pendingAgent = nil
         currentState = .idle
     }
 }

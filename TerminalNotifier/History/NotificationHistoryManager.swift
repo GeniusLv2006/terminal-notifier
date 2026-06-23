@@ -10,9 +10,13 @@ struct NotificationRecord: Codable, Identifiable {
 
 class NotificationHistoryManager {
     private let maxRecords = 100
-    private let storageKey = "notificationHistory"
+    private let storageKey: String
     private let decoder = JSONDecoder()
     private let encoder = JSONEncoder()
+
+    init(storageKey: String = "notificationHistory") {
+        self.storageKey = storageKey
+    }
 
     func addRecord(_ record: NotificationRecord) {
         var records = getRecords()
