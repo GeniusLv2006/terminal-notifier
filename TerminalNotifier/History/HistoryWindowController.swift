@@ -1,29 +1,30 @@
 import AppKit
 import SwiftUI
 
-class SettingsWindowController: NSObject, NSWindowDelegate {
+class HistoryWindowController: NSObject, NSWindowDelegate {
     private var window: NSWindow?
 
-    func showSettings(preferences: PreferencesManager) {
+    func showHistory(historyManager: NotificationHistoryManager) {
+        let historyView = HistoryView(historyManager: historyManager)
+        let hostingController = NSHostingController(rootView: historyView)
+
         if let existing = window {
+            existing.contentViewController = hostingController
             existing.center()
             existing.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
             return
         }
 
-        let settingsView = SettingsView(preferences: preferences)
-        let hostingController = NSHostingController(rootView: settingsView)
-
         let win = NSWindow(contentViewController: hostingController)
-        win.title = NSLocalizedString("Terminal Notifier Settings", comment: "")
+        win.title = NSLocalizedString("Notification History", comment: "")
         win.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
         win.titleVisibility = .hidden
         win.titlebarAppearsTransparent = true
         win.toolbarStyle = .unifiedCompact
         win.tabbingMode = .disallowed
-        win.setContentSize(NSSize(width: 740, height: 500))
-        win.minSize = NSSize(width: 680, height: 460)
+        win.setContentSize(NSSize(width: 620, height: 460))
+        win.minSize = NSSize(width: 560, height: 380)
         win.isReleasedWhenClosed = false
         win.delegate = self
         win.center()

@@ -15,6 +15,7 @@ class PreferencesManager: ObservableObject {
     @AppStorage("switchToTerminal")     var switchToTerminal: Bool = false
     @AppStorage("selectedPet")          var selectedPet: String = "pixel_cat"
     @AppStorage("claudeCodeEnabled")    var claudeCodeEnabled: Bool = false
+    @AppStorage("codexAppEnabled")      var codexAppEnabled: Bool = false
 
     var isInDNDPeriod: Bool {
         guard dndEnabled else { return false }

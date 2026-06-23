@@ -19,9 +19,11 @@ TerminalNotifier/
 │   ├── Detection/
 │   │   ├── TerminalContentMonitor.swift       # lsappinfo 轮询 Terminal Dock badge
 │   │   ├── ClaudeCodeMonitor.swift            # 轮询 Claude Code hook 投放的事件标记文件
+│   │   ├── CodexAppMonitor.swift              # 轮询 Codex hook 投放的事件标记文件
 │   │   └── TerminalScreenLocator.swift        # 定位 Terminal 所在屏幕
 │   ├── Integration/
-│   │   └── ClaudeHookManager.swift            # 安全合并/移除 ~/.claude/settings.json 的 hook
+│   │   ├── ClaudeHookManager.swift            # 安全合并/移除 ~/.claude/settings.json 的 hook
+│   │   └── CodexHookManager.swift             # 安全合并/移除 ~/.codex/hooks.json 的 hook
 │   ├── Notification/
 │   │   └── NotificationStateMachine.swift     # 通知生命周期状态机
 │   ├── Overlay/
@@ -100,9 +102,22 @@ TerminalNotifier/
 - **hook → App 通道**：`ClaudeHookManager` 在 `~/.claude/settings.json` 注册两条 command hook——`Notification`（`matcher: permission_prompt`）和 `Stop`。hook 经 `/bin/sh` 用 `mktemp` 在 `~/Library/Application Support/TerminalNotifier/claude-events/` 投放标记文件（`<type>.XXXXXX`；macOS BSD `date` 无 `%N`，故用 mktemp 保唯一）。
 - **消费**：`ClaudeCodeMonitor` 每秒轮询该目录，解析类型→`MessageProvider.Category`→删文件→Terminal 非前台则回调 delegate。
 - **安全合并**：`install()/uninstall()` 用 `JSONSerialization` 只增删带 `# terminal-notifier-hook` 标记的 entry，幂等，写前时间戳备份。**权衡**：重写会规整文件格式/键序。
-- **状态机**：新增 `.claudeTrigger(category)`，复用现有掉落/气泡/跳回/冷却；Claude 提醒不参与「N 条」合并，也不做 2 分钟 longWait 升级。
+- **状态机**：新增 `.agentTrigger(category, source)`，复用现有掉落/气泡/跳回/冷却；hook 提醒不参与「N 条」合并，也不做 2 分钟 longWait 升级。
 - **开关**：`PreferencesManager.claudeCodeEnabled`（默认关）；`AppDelegate` 观察其变化触发 install/uninstall + 启停监控，启动时若开启则幂等自愈。
 - **限制**：Esc 中断无对应 hook 不可检测；不处理 idle；前台门控仅识别 Terminal.app。
+
+### 2.6 Codex 集成（第三触发源）
+
+基于 Codex lifecycle hooks 的语义化信号源：
+
+- **hook → App 通道**：`CodexHookManager` 在 `~/.codex/hooks.json` 注册两条 command hook——`PermissionRequest` 和 `Stop`。hook 经 `/bin/sh` 用 `mktemp` 在 `~/Library/Application Support/TerminalNotifier/codex-events/` 投放标记文件。
+- **消费**：`CodexAppMonitor` 每秒轮询该目录，解析类型→Codex 专属 `MessageProvider.Category`→删文件→Codex App 非前台则回调 delegate。
+- **安全合并**：`install()/uninstall()` 用 `JSONSerialization` 只增删带 `# terminal-notifier-codex-hook` 标记的 entry，幂等，写前时间戳备份。若现有 `hooks.json` 不是可合并 JSON object，则取消写入并保留原文件。
+- **来源处理**：状态机记录 `NotificationSource`，初次显示和消息更新都把来源传给 `AppDelegate`；关闭提醒后的跳转会激活来源应用（Terminal 或 Codex）。
+- **开关**：`PreferencesManager.codexAppEnabled`（默认关）；`AppDelegate` 观察其变化触发 install/uninstall + 启停监控，启动时若开启则幂等自愈。
+- **信任要求**：Codex 会跳过未信任的 non-managed hooks。用户开启后需要重启或重新打开 Codex，并在 Codex 设置 → 钩子里审核并信任 `PermissionRequest` 和 `Stop` 两项。
+- **已知问题**：Codex 的 `auto-review` 流程仍可能发出 `PermissionRequest` hook，因此确认提醒可能早于或独立于自动审核结果出现。
+- **限制**：Codex hooks 是用户级配置，可能同时被本机 Codex App / CLI / IDE Extension 采用；当前不区分具体 Codex 入口，也不读取 Codex App 内部实时运行状态。受管理 hook 会追加 `~/Library/Application Support/TerminalNotifier/codex-hook.log`，用于区分 hook 未执行和 App 端未提醒。
 
 ---
 
@@ -475,6 +490,8 @@ class PreferencesManager: ObservableObject {
     @AppStorage("language")             var language: String = "system"
     @AppStorage("switchToTerminal")     var switchToTerminal: Bool = false
     @AppStorage("selectedPet")          var selectedPet: String = "pixel_cat"
+    @AppStorage("claudeCodeEnabled")    var claudeCodeEnabled: Bool = false
+    @AppStorage("codexAppEnabled")      var codexAppEnabled: Bool = false
 
     var isInDNDPeriod: Bool { get }
     var resolvedLocale: String { get }                  // = resolveLocale(language)

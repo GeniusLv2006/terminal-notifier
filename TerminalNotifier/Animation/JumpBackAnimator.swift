@@ -2,42 +2,44 @@ import QuartzCore
 
 class JumpBackAnimator {
 
-    static let duration: CFTimeInterval = 0.6
+    static let duration: CFTimeInterval = 0.42
 
     /// Animate a layer from its current position to the menu bar position
-    /// following a parabolic arc (up then to target), with scale-down.
+    /// using a direct vertical path.
     func animate(layer: CALayer, from currentPos: CGPoint, to targetPos: CGPoint,
                  completion: @escaping () -> Void) {
 
-        let positionAnim = CAKeyframeAnimation(keyPath: "position")
-        let arcHeight: CGFloat = 80
-        let mid = NSPoint(
-            x: (currentPos.x + targetPos.x) / 2,
-            y: max(currentPos.y, targetPos.y) + arcHeight
-        )
-        positionAnim.values = [currentPos, mid, targetPos].map { NSValue(point: $0) }
-        positionAnim.keyTimes = [0.0, 0.4, 1.0]
-        positionAnim.duration = Self.duration
-        positionAnim.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-        positionAnim.fillMode = .forwards
-        positionAnim.isRemovedOnCompletion = false
+        let startOffset = currentPos.y - layer.position.y
+        let endOffset = targetPos.y - layer.position.y
 
-        let scaleAnim = CAKeyframeAnimation(keyPath: "transform.scale")
-        scaleAnim.values = [1.0, 0.6, 0.15]
-        scaleAnim.keyTimes = [0.0, 0.5, 1.0]
-        scaleAnim.duration = Self.duration
-        scaleAnim.timingFunction = CAMediaTimingFunction(name: .easeIn)
-        scaleAnim.fillMode = .forwards
-        scaleAnim.isRemovedOnCompletion = false
+        let translationAnim = CABasicAnimation(keyPath: "transform.translation.y")
+        translationAnim.fromValue = startOffset
+        translationAnim.toValue = endOffset
+        translationAnim.duration = Self.duration
+        translationAnim.timingFunction = CAMediaTimingFunction(name: .easeIn)
+        translationAnim.fillMode = .forwards
+        translationAnim.isRemovedOnCompletion = false
+
+        let opacityAnim = CABasicAnimation(keyPath: "opacity")
+        opacityAnim.fromValue = layer.presentation()?.opacity ?? layer.opacity
+        opacityAnim.toValue = 0
+        opacityAnim.duration = Self.duration
+        opacityAnim.timingFunction = CAMediaTimingFunction(name: .easeIn)
+        opacityAnim.fillMode = .forwards
+        opacityAnim.isRemovedOnCompletion = false
 
         let group = CAAnimationGroup()
-        group.animations = [positionAnim, scaleAnim]
+        group.animations = [translationAnim, opacityAnim]
         group.duration = Self.duration
+        group.timingFunction = CAMediaTimingFunction(name: .easeIn)
         group.fillMode = .forwards
         group.isRemovedOnCompletion = false
 
         CATransaction.begin()
+        CATransaction.setDisableActions(true)
         CATransaction.setCompletionBlock(completion)
+        layer.transform = CATransform3DMakeTranslation(0, endOffset, 0)
+        layer.opacity = 0
         layer.add(group, forKey: "jumpBack")
         CATransaction.commit()
     }

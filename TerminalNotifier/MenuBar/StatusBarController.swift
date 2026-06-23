@@ -4,7 +4,6 @@ class StatusBarController {
     private let statusItem: NSStatusItem
     private let menu: NSMenu
     private var isPaused: Bool = false
-    private var pauseMenuItem: NSMenuItem?
 
     var onSettingsClicked: (() -> Void)?
     var onPauseToggled: ((Bool) -> Void)?
@@ -31,42 +30,99 @@ class StatusBarController {
     }
 
     private func setupMenu() {
+        rebuildMenu()
+        statusItem.menu = menu
+    }
+
+    func refreshMenu() {
+        rebuildMenu()
+    }
+
+    private func rebuildMenu() {
+        menu.removeAllItems()
+
+        let appItem = NSMenuItem(title: "Terminal Notifier", action: nil, keyEquivalent: "")
+        appItem.isEnabled = false
+        menu.addItem(appItem)
+
+        menu.addItem(sectionHeader(menuLang("Status", zh: "状态")))
+
+        let notificationState = isPaused
+            ? menuLang("Paused", zh: "已暂停")
+            : (PreferencesManager.shared.enabled ? menuLang("Active", zh: "运行中") : menuLang("Disabled", zh: "已关闭"))
+        let statusItem = NSMenuItem(
+            title: "\(menuLang("Notifications", zh: "提醒")): \(notificationState)",
+            action: nil,
+            keyEquivalent: ""
+        )
+        statusItem.image = isPaused ? Self.createPausedIcon(size: 16) : Self.createColoredCatIcon(size: 16)
+        statusItem.isEnabled = false
+        menu.addItem(statusItem)
+
+        let claudeState = PreferencesManager.shared.claudeCodeEnabled
+            ? menuLang("On", zh: "已开启")
+            : menuLang("Off", zh: "未开启")
+        let claudeItem = NSMenuItem(
+            title: "Claude Code: \(claudeState)",
+            action: nil,
+            keyEquivalent: ""
+        )
+        claudeItem.image = NSImage(systemSymbolName: "terminal", accessibilityDescription: nil)
+        claudeItem.isEnabled = false
+        menu.addItem(claudeItem)
+
+        let codexState = PreferencesManager.shared.codexAppEnabled
+            ? menuLang("On", zh: "已开启")
+            : menuLang("Off", zh: "未开启")
+        let codexItem = NSMenuItem(
+            title: "Codex: \(codexState)",
+            action: nil,
+            keyEquivalent: ""
+        )
+        codexItem.image = NSImage(systemSymbolName: "macwindow", accessibilityDescription: nil)
+        codexItem.isEnabled = false
+        menu.addItem(codexItem)
+
+        menu.addItem(.separator())
+        menu.addItem(sectionHeader(menuLang("Actions", zh: "操作")))
+
         let settingsItem = NSMenuItem(
-            title: "Settings...",
+            title: menuLang("Settings...", zh: "设置..."),
             action: #selector(settingsAction),
             keyEquivalent: ","
         )
+        settingsItem.image = NSImage(systemSymbolName: "gearshape", accessibilityDescription: nil)
         settingsItem.target = self
         menu.addItem(settingsItem)
 
         let pauseItem = NSMenuItem(
-            title: "Pause Notifications",
+            title: isPaused ? menuLang("Resume Notifications", zh: "恢复提醒") : menuLang("Pause Notifications", zh: "暂停提醒"),
             action: #selector(pauseAction),
             keyEquivalent: ""
         )
+        pauseItem.image = NSImage(systemSymbolName: isPaused ? "play.circle" : "pause.circle", accessibilityDescription: nil)
         pauseItem.target = self
         menu.addItem(pauseItem)
-        pauseMenuItem = pauseItem
 
         let historyItem = NSMenuItem(
-            title: "Notification History",
+            title: menuLang("Notification History", zh: "提醒历史"),
             action: #selector(historyAction),
             keyEquivalent: ""
         )
+        historyItem.image = NSImage(systemSymbolName: "clock.arrow.circlepath", accessibilityDescription: nil)
         historyItem.target = self
         menu.addItem(historyItem)
 
         menu.addItem(.separator())
 
         let quitItem = NSMenuItem(
-            title: "Quit Terminal Notifier",
+            title: menuLang("Quit Terminal Notifier", zh: "退出 Terminal Notifier"),
             action: #selector(quitAction),
             keyEquivalent: "q"
         )
+        quitItem.image = NSImage(systemSymbolName: "xmark.circle", accessibilityDescription: nil)
         quitItem.target = self
         menu.addItem(quitItem)
-
-        statusItem.menu = menu
     }
 
     func updateIcon(state: MenuBarIconState) {
@@ -85,9 +141,7 @@ class StatusBarController {
 
     func updatePauseMenuItem(isPaused: Bool) {
         self.isPaused = isPaused
-        if let pauseItem = pauseMenuItem {
-            pauseItem.title = isPaused ? "Resume Notifications" : "Pause Notifications"
-        }
+        rebuildMenu()
     }
 
     @objc private func settingsAction() { onSettingsClicked?() }
@@ -135,5 +189,19 @@ class StatusBarController {
         source?.draw(in: NSRect(x: 0, y: 0, width: size, height: size))
         image.unlockFocus()
         return image
+    }
+
+    private func sectionHeader(_ title: String) -> NSMenuItem {
+        if #available(macOS 14.0, *) {
+            return NSMenuItem.sectionHeader(title: title)
+        }
+
+        let item = NSMenuItem(title: title.uppercased(), action: nil, keyEquivalent: "")
+        item.isEnabled = false
+        return item
+    }
+
+    private func menuLang(_ en: String, zh: String) -> String {
+        PreferencesManager.shared.resolvedLocale == "zh" ? zh : en
     }
 }

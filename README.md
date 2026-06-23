@@ -45,7 +45,7 @@ INSTALL=1 ./build.sh
 ## 功能
 
 - **零权限**：无需辅助功能权限，无需屏幕录制权限
-- **Claude Code 状态检测**（可选）：通过 Claude Code hook 直接区分「需要确认」和「对话完成」，不依赖终端响铃
+- **Claude Code / Codex 状态检测**（可选）：通过 hook 直接区分「需要确认」和「对话完成」，不依赖终端响铃
 - **全屏兼容**：即使你在全屏看视频或写代码，猫也能弹出来
 - **免打扰**：设置时段（如 22:00–08:00），猫会自觉安静
 - **冷却时间**：可调（5–120 秒），防止猫刷屏
@@ -64,6 +64,21 @@ INSTALL=1 ./build.sh
 
 **限制：** 按 Esc「中断」时 Claude Code 不触发任何 hook，因此无法检测中断；本功能不处理输入空闲（idle）。自动合并会规整 settings.json 的格式与键序（已备份）。
 
+## Codex 状态检测（可选）
+
+打开设置里的 **检测 Codex 状态** 后，App 会通过 Codex lifecycle hooks 捕捉两类事件：
+
+- **需要确认**：Codex 等你批准某个操作（`PermissionRequest`）
+- **对话完成**：Codex 完成一轮（`Stop`）
+
+开启时 App 会把受管理的 hooks **安全合并**进 `~/.codex/hooks.json`（保留你已有的全部 hooks，并在写入前生成 `hooks.json.tn-backup-<时间戳>` 备份），关闭即移除。与 badge 一致，**仅 Codex 不在前台时才弹**。
+
+**必须信任 hooks：** 开启后请重启或重新打开 Codex，然后进入 Codex **设置 → 钩子**，审核并信任 `PermissionRequest` 和 `Stop` 两项。未信任前 Codex 会跳过这些 hooks，Terminal Notifier 不会收到提醒。
+
+**已知问题：** Codex 的 `auto-review` 流程仍可能发出 `PermissionRequest` hook，因此即使 Codex 自动完成审核，也可能出现「需要确认」提醒。
+
+**限制：** Codex hooks 是用户级配置，可能同时被本机 Codex App / CLI / IDE Extension 采用；当前不区分具体 Codex 入口，也不读取 Codex App 内部实时运行状态。若需要排查 hook 是否执行，可查看 `~/Library/Application Support/TerminalNotifier/codex-hook.log`。
+
 ## 设置
 
 点击菜单栏猫咪 → **设置**，可以调整：
@@ -72,12 +87,13 @@ INSTALL=1 ./build.sh
 |--------|------|--------|
 | 启用提醒 | 开关全部提醒 | 开 |
 | 检测 Claude Code 状态 | 通过 hook 区分「需要确认 / 对话完成」 | 关 |
+| 检测 Codex 状态 | 通过 Codex hook 区分「需要确认 / 对话完成」 | 关 |
 | 开机自启 | 登录时自动启动 | 关 |
 | 语言 | 中文 / 英文 / 跟随系统 | 跟随系统 |
 | 声音 | 提醒时播放音效 | 开 |
 | 冷却时间 | 两次提醒最短间隔 | 10 秒 |
 | 免打扰 | 在指定时段暂停提醒 | 关 |
-| 跳转终端 | 关闭提醒后切换到 Terminal | 关 |
+| 跳转来源应用 | 关闭提醒后切换到 Terminal 或 Codex | 关 |
 
 ## 更新日志
 

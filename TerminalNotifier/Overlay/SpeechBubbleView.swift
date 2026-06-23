@@ -7,68 +7,59 @@ class SpeechBubbleView: NSView {
 
     override init(frame: NSRect) {
         super.init(frame: frame)
+        wantsLayer = true
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
+    static func preferredSize(for text: String, width: CGFloat) -> NSSize {
+        let contentInsets = NSEdgeInsets(top: 16, left: 24, bottom: 16, right: 24)
+        let availableWidth = width - contentInsets.left - contentInsets.right
+        let attributed = NSAttributedString(string: text, attributes: textAttributes)
+        let measured = attributed.boundingRect(
+            with: NSSize(width: availableWidth, height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading]
+        )
+        let height = max(64, ceil(measured.height) + contentInsets.top + contentInsets.bottom)
+        return NSSize(width: width, height: height)
+    }
+
     override func draw(_ dirtyRect: NSRect) {
-        let bounds = self.bounds
-        let bubbleRect = bounds.insetBy(dx: 4, dy: 12)
+        let drawingBounds = bounds.insetBy(dx: 8, dy: 6)
+        let bubbleRect = drawingBounds
+        let bubblePath = NSBezierPath(roundedRect: bubbleRect, xRadius: 18, yRadius: 18)
+        let fillColor = NSColor.controlBackgroundColor.withAlphaComponent(0.96)
+        let strokeColor = NSColor.separatorColor.withAlphaComponent(0.72)
 
-        // Bubble body
-        let bubblePath = NSBezierPath(roundedRect: bubbleRect, xRadius: 16, yRadius: 16)
+        NSGraphicsContext.saveGraphicsState()
+        let shadow = NSShadow()
+        shadow.shadowColor = NSColor.black.withAlphaComponent(isDarkMode ? 0.36 : 0.16)
+        shadow.shadowBlurRadius = 18
+        shadow.shadowOffset = NSSize(width: 0, height: -4)
+        shadow.set()
 
-        // Tail pointing down (to the cat below)
-        let tailPath = NSBezierPath()
-        let tailCenterX = bounds.midX
-        let tailWidth: CGFloat = 16
-        let tailHeight: CGFloat = 12
-        tailPath.move(to: NSPoint(x: tailCenterX - tailWidth / 2, y: bubbleRect.minY))
-        tailPath.line(to: NSPoint(x: tailCenterX, y: bubbleRect.minY - tailHeight))
-        tailPath.line(to: NSPoint(x: tailCenterX + tailWidth / 2, y: bubbleRect.minY))
-        tailPath.close()
-
-        // Fill
-        NSColor.white.setFill()
+        fillColor.setFill()
         bubblePath.fill()
-        tailPath.fill()
+        NSGraphicsContext.restoreGraphicsState()
 
-        // Stroke (pixel-style thick border)
-        NSColor.black.setStroke()
-        bubblePath.lineWidth = 3
+        strokeColor.setStroke()
+        bubblePath.lineWidth = 1
         bubblePath.stroke()
-        tailPath.lineWidth = 3
-        tailPath.stroke()
-        tailPath.lineWidth = 3
-        let tailStroke = NSBezierPath()
-        tailStroke.move(to: NSPoint(x: tailCenterX, y: bubbleRect.minY - tailHeight))
-        tailStroke.line(to: NSPoint(x: tailCenterX, y: bubbleRect.minY + 3))
-        tailStroke.stroke()
 
-        // Text
-        let textStyle = NSMutableParagraphStyle()
-        textStyle.alignment = .center
-        textStyle.lineBreakMode = .byWordWrapping
+        drawText(in: bubbleRect)
+    }
 
-        let fontSize: CGFloat = 16
-        let font = NSFont.systemFont(ofSize: fontSize, weight: .medium)
-
-        let textAttrs: [NSAttributedString.Key: Any] = [
-            .font: font,
-            .foregroundColor: NSColor.black,
-            .paragraphStyle: textStyle
-        ]
-
-        // 按实际文字高度在气泡内垂直居中绘制,避免两行中文(行高较大)底部被矩形裁掉。
-        let hInset: CGFloat = 20
+    private func drawText(in bubbleRect: NSRect) {
+        let hInset: CGFloat = 24
+        let vInset: CGFloat = 15
         let availableWidth = bubbleRect.width - hInset * 2
-        let attributed = NSAttributedString(string: text, attributes: textAttrs)
+        let attributed = NSAttributedString(string: text, attributes: Self.textAttributes)
         let drawOptions: NSString.DrawingOptions = [.usesLineFragmentOrigin, .usesFontLeading]
         let measured = attributed.boundingRect(
             with: NSSize(width: availableWidth, height: .greatestFiniteMagnitude),
             options: drawOptions
         )
-        let textHeight = ceil(measured.height)
+        let textHeight = min(ceil(measured.height), bubbleRect.height - vInset * 2)
         let textRect = NSRect(
             x: bubbleRect.minX + hInset,
             y: bubbleRect.midY - textHeight / 2,
@@ -76,5 +67,22 @@ class SpeechBubbleView: NSView {
             height: textHeight
         )
         attributed.draw(with: textRect, options: drawOptions)
+    }
+
+    private var isDarkMode: Bool {
+        effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+    }
+
+    private static var textAttributes: [NSAttributedString.Key: Any] {
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        paragraph.lineBreakMode = .byWordWrapping
+        paragraph.lineSpacing = 1.5
+
+        return [
+            .font: NSFont.systemFont(ofSize: 15, weight: .semibold),
+            .foregroundColor: NSColor.labelColor,
+            .paragraphStyle: paragraph
+        ]
     }
 }

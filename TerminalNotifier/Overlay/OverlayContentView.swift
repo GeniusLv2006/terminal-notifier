@@ -5,6 +5,10 @@ class OverlayContentView: NSView {
     let petView: PetSpriteView
     let bubbleView: SpeechBubbleView
 
+    static func petCenter(in size: NSSize, petSize: CGFloat) -> CGPoint {
+        CGPoint(x: size.width / 2, y: size.height / 2)
+    }
+
     init(frame: NSRect, petSize: CGFloat, message: String) {
         self.petView = PetSpriteView(frame: .zero)
         self.bubbleView = SpeechBubbleView(frame: .zero)
@@ -29,29 +33,31 @@ class OverlayContentView: NSView {
     }
 
     private func layoutViews(petSize: CGFloat) {
-        let centerX = bounds.midX
-        // petY is relative to the content view which starts below menu bar
-        let petY = bounds.height * 0.35
+        let petCenter = Self.petCenter(in: bounds.size, petSize: petSize)
+        let bubbleWidth = min(bounds.width - 64, 300)
+        let bubbleSize = SpeechBubbleView.preferredSize(for: bubbleView.text, width: bubbleWidth)
+        let bubbleGap: CGFloat = 12
+        let petY = petCenter.y - petSize / 2
+        let bubbleY = max(24, petY - bubbleGap - bubbleSize.height)
 
         petView.frame = NSRect(
-            x: centerX - petSize / 2,
+            x: petCenter.x - petSize / 2,
             y: petY,
             width: petSize,
             height: petSize
         )
 
-        let bubbleWidth: CGFloat = 320
-        let bubbleHeight: CGFloat = 80
         bubbleView.frame = NSRect(
-            x: centerX - bubbleWidth / 2,
-            y: petView.frame.maxY + 12,
+            x: petCenter.x - bubbleWidth / 2,
+            y: bubbleY,
             width: bubbleWidth,
-            height: bubbleHeight
+            height: bubbleSize.height
         )
     }
 
     func updateMessage(_ message: String) {
         bubbleView.text = message
+        layoutViews(petSize: petView.frame.width)
         bubbleView.needsDisplay = true
     }
 
