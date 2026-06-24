@@ -12,6 +12,7 @@ build/
 *.xcworkspace
 
 # Local AI / agent workspace files
+AGENTS.md
 CLAUDE.md
 .claude/
 .codex/
